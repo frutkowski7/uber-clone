@@ -1,0 +1,6 @@
+update()	INSERT, UPDATE, DELETE
+query()	-Pobieranie wielu rekordów
+queryForObject()	Pobieranie pojedynczej wartości lub obiektu
+batchUpdate()	Wykonywanie wielu operacji zapisu
+
+

@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: uber-clone
+  datasource:
+    url: jdbc:postgresql://localhost:5433/uber_clone
+    username: postgres
+    password: lodomir10r
+    driver-class-name: org.postgresql.Driver
+
+  
+jwt:
+  secret: ${JWT_SECRET}
