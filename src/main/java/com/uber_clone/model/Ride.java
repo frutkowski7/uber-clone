@@ -2,8 +2,9 @@ package com.uber_clone.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
-
+import com.uber_clone.dto.PointDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,6 +35,8 @@ public class Ride {
     private double dropoffLongitude;
     // Kod komórki H3 miejsca odbioru
     private BigDecimal price;
+
+    private List<PointDto> coordinates;
 
     private Instant createdAt;
     private Instant updatedAt;

@@ -1,18 +1,28 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: uber_postgres
     environment:
-      POSTGRES_DB: uber_clone
+      POSTGRES_DB: uber_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_PASSWORD: postgres_password
     ports:
-      - "5433:5432"
+      - "5432:5432"
 
-  app:
-    build: .
+  osrm-warsaw:
+    image: osrm/osrm-backend:latest
+    container_name: uber_osrm_warsaw
     ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
+      - "5000:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: >
+      sh -c "if [ ! -f /data/mazowieckie-latest.osrm ]; then
+               wget http://download.geofabrik.de/europe/poland/mazowieckie-latest.osm.pbf -O /data/mazowieckie-latest.osm.pbf &&
+               osrm-extract -p /opt/car.lua /data/mazowieckie-latest.osm.pbf &&
+               osrm-partition /data/mazowieckie-latest.osrm &&
+               osrm-customize /data/mazowieckie-latest.osrm;
+             fi &&
+             osrm-routed --algorithm mld /data/mazowieckie-latest.osrm"

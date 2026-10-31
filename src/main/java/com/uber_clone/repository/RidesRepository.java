@@ -9,28 +9,34 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import com.uber_clone.dto.PointDto;
 import com.uber_clone.model.Ride;
 
 import lombok.RequiredArgsConstructor;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @RequiredArgsConstructor
 @Repository
 public class RidesRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public UUID addNewRide(Ride ride) {
 
         String sql = """
                     INSERT INTO rides
-                    (client_id, status, pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude, price)
-                    VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+                    (client_id, status, pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude, price, coordinates)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb) RETURNING id
                 """;
+
+        String coordinatesJson = mapper.writeValueAsString(ride.getCoordinates());
 
         return jdbcTemplate.queryForObject(sql, UUID.class, ride.getClientId(), ride.getStatus().name(),
                 ride.getPickupLatitude(),
                 ride.getPickupLongitude(),
-                ride.getDropoffLatitude(), ride.getDropoffLongitude(), ride.getPrice());
+                ride.getDropoffLatitude(), ride.getDropoffLongitude(), ride.getPrice(), coordinatesJson);
 
     }
 
@@ -231,6 +237,15 @@ public class RidesRepository {
 
     private final RowMapper<Ride> rideRowMapper = (rs, rowNum) -> {
         Ride ride = new Ride();
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        String json = rs.getString("coordinates");
+        List<PointDto> coordinates = mapper.readValue(
+                json,
+                new TypeReference<List<PointDto>>() {
+                });
+        ride.setCoordinates(coordinates);
 
         ride.setId(rs.getObject("id", UUID.class));
         ride.setClientId(rs.getObject("client_id", UUID.class));

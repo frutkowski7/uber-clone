@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.uber_clone.Request.CreateRideRequest;
+import com.uber_clone.Response.AcceptRideResponse;
 import com.uber_clone.Response.CreateRideResponse;
 import com.uber_clone.Response.RideResponse;
+import com.uber_clone.dto.PointDto;
 import com.uber_clone.event.DriverStatusChangedEvent;
 import com.uber_clone.exceptions.RideNotFoundException;
 import com.uber_clone.exceptions.UserNotFoundException;
@@ -20,7 +22,6 @@ import com.uber_clone.repository.DriverRepository;
 import com.uber_clone.repository.RidesRepository;
 import com.uber_clone.repository.UserRepository;
 import com.uber_clone.util.FareCalculator;
-
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -29,6 +30,7 @@ public class RidesService {
 
         private final RidesRepository ridesRepository;
         private final DriverRepository driverRepository;
+        private final OsmrRoutingService osmrRoutingService;
         private final UserRepository userRepository;
         private final FareCalculator fareCalculator;
 
@@ -36,8 +38,17 @@ public class RidesService {
         private final ApplicationEventPublisher eventPublisher;
 
         public CreateRideResponse addNewRide(CreateRideRequest request, String userEmail) {
+
                 UUID clientId = userRepository.getIdByEmail(userEmail)
                                 .orElseThrow(() -> new UserNotFoundException("Client not found!"));
+
+                com.uber_clone.dto.OsmrResponse route = osmrRoutingService.getRoute(
+                                request.getPickupLongitude(),
+                                request.getPickupLatitude(),
+                                request.getDropoffLongitude(), request.getDropoffLatitude());
+
+                List<PointDto> coordinates = route.routes().get(0).geometry().coordinates().stream()
+                                .map(c -> new PointDto(c.get(1), c.get(0))).toList();
 
                 Ride ride = new Ride();
                 ride.setClientId(clientId);
@@ -45,6 +56,7 @@ public class RidesService {
                 ride.setPickupLongitude(request.getPickupLongitude());
                 ride.setDropoffLatitude(request.getDropoffLatitude());
                 ride.setDropoffLongitude(request.getDropoffLongitude());
+                ride.setCoordinates(coordinates);
                 ride.setStatus(Ride.Status.REQUESTED);
 
                 ride.setPrice(fareCalculator.calculatePrice(
@@ -56,20 +68,28 @@ public class RidesService {
                 UUID generatedId = ridesRepository.addNewRide(ride);
                 ride.setId(generatedId);
 
-                return new CreateRideResponse(ride.getId(), ride.getStatus(), ride.getPrice());
+                return new CreateRideResponse(ride.getId(), ride.getStatus(), ride.getPrice(), ride.getCoordinates());
+
         }
 
         @Transactional
-        public RideResponse acceptRide(UUID rideId, String userEmail) {
+        public AcceptRideResponse acceptRide(UUID rideId, String userEmail) {
                 UUID driverId = userRepository.getIdByEmail(userEmail)
                                 .orElseThrow(() -> new UserNotFoundException("Driver not found"));
+
+                /*
+                 * if (driverActivity.getDriverStatus().equals(DriverStatus.ON_TRIP)) {
+                 * throw new RideNotFoundException("Driver already on trip!");
+                 * 
+                 * }
+                 */
 
                 Ride updatedRide = ridesRepository.acceptRide(rideId, driverId)
                                 .orElseThrow(() -> new RideNotFoundException("Ride not found or already accepted!"));
 
                 eventPublisher.publishEvent(new DriverStatusChangedEvent(driverId, DriverStatus.ON_TRIP, false));
 
-                return mapToRideResponse(updatedRide);
+                return mapToAcceptRideResponse(updatedRide);
         }
 
         @Transactional
@@ -108,6 +128,7 @@ public class RidesService {
 
                 // Jeśli kierowca był przypisany, odblokowujemy go zdarzeniem
                 if (driverId != null) {
+
                         eventPublisher.publishEvent(
                                         new DriverStatusChangedEvent(driverId, DriverStatus.AVAILABLE, true));
                 }
@@ -162,5 +183,19 @@ public class RidesService {
                                 ride.getStatus(),
                                 ride.getPrice(),
                                 ride.getCreatedAt());
+        }
+
+        private AcceptRideResponse mapToAcceptRideResponse(Ride ride) {
+                return new AcceptRideResponse(
+                                ride.getId(),
+                                ride.getClientId(),
+                                ride.getPickupLatitude(),
+                                ride.getPickupLongitude(),
+                                ride.getDropoffLatitude(),
+                                ride.getDropoffLongitude(),
+                                ride.getStatus(),
+                                ride.getPrice(),
+                                ride.getCreatedAt(),
+                                ride.getCoordinates());
         }
 }

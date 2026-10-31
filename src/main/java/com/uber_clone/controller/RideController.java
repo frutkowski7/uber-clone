@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.uber_clone.Request.CreateRideRequest;
+import com.uber_clone.Response.AcceptRideResponse;
 import com.uber_clone.Response.CreateRideResponse;
 import com.uber_clone.Response.RideResponse;
 import com.uber_clone.service.RidesService;
@@ -62,7 +63,7 @@ public class RideController {
 
     @PreAuthorize("hasRole('DRIVER')")
     @PostMapping("/{id}/accept")
-    public ResponseEntity<RideResponse> acceptRide(
+    public ResponseEntity<AcceptRideResponse> acceptRide(
             @PathVariable("id") UUID rideId,
             Authentication authentication) {
         return ResponseEntity.ok(rideService.acceptRide(rideId, authentication.getName()));

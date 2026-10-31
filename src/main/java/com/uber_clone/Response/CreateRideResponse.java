@@ -1,8 +1,10 @@
 package com.uber_clone.Response;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
+import com.uber_clone.dto.PointDto;
 import com.uber_clone.model.Ride;
 
 import jakarta.validation.constraints.NotNull;
@@ -23,5 +25,8 @@ public class CreateRideResponse {
 
     @NotNull
     private BigDecimal price;
+
+    @NotNull
+    private List<PointDto> coordinates;
 
 }

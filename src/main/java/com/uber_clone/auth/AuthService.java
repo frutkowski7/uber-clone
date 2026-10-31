@@ -13,15 +13,12 @@ import com.uber_clone.model.User;
 import com.uber_clone.model.User.Role;
 import com.uber_clone.repository.UserRepository;
 import com.uber_clone.service.DriverService;
-
 import jakarta.transaction.Transactional;
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -91,15 +88,19 @@ public class AuthService {
         }
 
         if (verifyPassword(request.getPassword(), user.get().getPassword())) {
+            UserDetails userDetails = detailsService.loadUserByUsername(request.getEmail());
+            var jwtToken = jwtService.generateToken(userDetails);
+
             return new LoginResponse(
                     user.get().getId(),
-                    user.get().getEmail());
+                    user.get().getEmail(),
+                    jwtToken);
         }
 
         // null mogę przypisać typom referencyjnym
         // String może być obiektem tekstowym albo null
 
-        return new LoginResponse(null, null);
+        return new LoginResponse(null, null, null);
 
     }
 
